@@ -9,26 +9,51 @@ function mqttAirconAccessory(log, config) {
   this.log          = log;
   this.name         = config["name"];
   this.url          = config["url"];
+  this.client_Id    = 'mqttjs_' + Math.random().toString(16).substr(2, 8);
+  this.options      = {
+      keepalive: 10,
+      clientId: this.client_Id,
+      protocolId: 'MQTT',
+      protocolVersion: 4,
+      clean: true,
+      reconnectPeriod: 1000,
+      connectTimeout: 30 * 1000,
+      will: {
+           topic: 'WillMsg',
+           payload: 'Connection Closed abnormally..!',
+           qos: 0,
+           retain: false
+      },
+      username: config["username"],
+      password: config["password"],
+      rejectUnauthorized: false
+  };
+  this.caption                    = config["caption"];
+  this.topics                     = config["topics"];
+  this.payload_mode               = config["payload_mode"];
+  this.payload_on                 = config["payload_on"];
+  this.payload_off                = config["payload_off"];
+  this.payload_temp               = config["payload_temp"];
+  this.payload_ctemp              = config["payload_ctemp"];
+  this.payload_chui               = config["payload_chui"];
 
-  this.on           = false;
-  this.TargetTemperature          = 27;
-  this.TargetHeatingCoolingState  = 0;
+  this.TargetTemperature          = config["TargetTemperature"];
+  this.TargetHeatingCoolingState  = config["TargetHeatingCoolingState"];
+  this.CurrentHeatingCoolingState = config["TargetHeatingCoolingState"];
   this.CurrentTemperature         = 26;
+  this.CurrentRelativeHumidity    = 0;
   this.TemperatureDisplayUnits    = 0;
-  this.CurrentRelativeHumidity    = 50;
-  this.CurrentHeatingCoolingState = 0;
+  this.options_publish = {
+    qos: 0,
+    retain: true
+  };
 
   this.service = new Service.Thermostat(this.name);
-  this.service
-    .addCharacteristic(Characteristic.On);
-
-  this.service.getCharacteristic(Characteristic.On)
-    .on('set', this.setTargetHeatingCoolingState.bind(this));
 
   this.service.getCharacteristic(Characteristic.TargetTemperature)
     .setProps({
         maxValue: 30,
-        rinValue: 18,
+        minValue: 18,
         minStep: 1
     })
     .on('set', this.setTargetTemperature.bind(this))
@@ -60,12 +85,31 @@ function mqttAirconAccessory(log, config) {
   this.service.getCharacteristic(Characteristic.CurrentHeatingCoolingState)    
     .on('get', this.getCurrentHeatingCoolingState.bind(this));
 
-  this.service.getCharacteristic(Characteristic.CoolingThresholdTemperature)
-    .setProps({
-        maxValue: 30,
-        minValue: 18,
-        minStep: 1
-    });
+
+  // connect to MQTT broker
+  this.client = mqtt.connect(this.url, this.options);
+  var that = this;
+  this.client.on('error', function (err) {
+      that.log('Error event on MQTT:', err);
+  });
+
+  this.client.on('message', function (topic, message) {
+    console.log(that.payloadisjson);
+
+    if (topic == that.topics.getOn) {
+        var status = JSON.parse(message);
+        that.CurrentHeatingCoolingState = (status[that.payload_mode] == that.payload_on ? Characteristic.CurrentHeatingCoolingState.COOL : Characteristic.CurrentHeatingCoolingState.OFF);
+        that.TargetTemperature          = status[that.payload_temp];
+        that.CurrentTemperature         = status[that.payload_ctemp];
+        that.CurrentRelativeHumidity    = status[that.payload_chui];
+
+        that.service.getCharacteristic(CurrentHeatingCoolingState).setValue(that.CurrentHeatingCoolingState, undefined, 'fromSetValue');
+        that.service.getCharacteristic(TargetTemperature).setValue(that.TargetTemperature, undefined, 'fromSetValue');
+        that.service.getCharacteristic(CurrentTemperature).setValue(that.CurrentTemperature, undefined, 'fromSetValue');
+        that.service.getCharacteristic(CurrentRelativeHumidity).setValue(hat.CurrentRelativeHumidity, undefined, 'fromSetValue');
+    }
+  });
+  this.client.subscribe(this.topics.getOn);
 }
 
 module.exports = function(homebridge) {
@@ -81,7 +125,11 @@ mqttAirconAccessory.prototype.getTargetHeatingCoolingState = function(callback) 
 mqttAirconAccessory.prototype.setTargetHeatingCoolingState = function(TargetHeatingCoolingState, callback, context) {
     if(context !== 'fromSetValue') {
       this.TargetHeatingCoolingState = TargetHeatingCoolingState;
-      //this.client.publish(this.topics.setTargetHeatingCoolingState, this.TargetHeatingCoolingState.toString());
+      if (this.TargetHeatingCoolingState == Characteristic.CurrentHeatingCoolingState.COOL) {
+        this.client.publish(this.topics.setOn,  '{' + this.payload_mode + ':' + this.payload_on + ',' + this.payload_temp + ':' + this.TargetTemperature + '}', this.options_publish);
+      } else if (this.TargetHeatingCoolingState == Characteristic.CurrentHeatingCoolingState.OFF) {
+        this.client.publish(this.topics.setOn,  '{' + this.payload_mode + ':' + this.payload_off + ',' + this.payload_temp + ':' + this.TargetTemperature + '}', this.options_publish);
+      }
     }
     callback();
 }
@@ -93,7 +141,11 @@ mqttAirconAccessory.prototype.getTargetTemperature = function(callback) {
 mqttAirconAccessory.prototype.setTargetTemperature = function(TargetTemperature, callback, context) {
     if(context !== 'fromSetValue') {
       this.TargetTemperature = TargetTemperature;
-      //this.client.publish(this.topics.setTargetTemperature, this.TargetTemperature.toString());
+      if (this.TargetHeatingCoolingState == Characteristic.CurrentHeatingCoolingState.COOL) {
+        this.client.publish(this.topics.setOn,  '{' + this.payload_mode + ':' + this.payload_on + ',' + this.payload_temp + ':' + this.TargetTemperature + '}', this.options_publish);
+      } else if (this.TargetHeatingCoolingState == Characteristic.CurrentHeatingCoolingState.OFF) {
+        this.client.publish(this.topics.setOn,  '{' + this.payload_mode + ':' + this.payload_off + ',' + this.payload_temp + ':' + this.TargetTemperature + '}', this.options_publish);
+      }
     }
     callback();
 }

@@ -11,11 +11,25 @@
     "platforms": [
     ],
     "accessories": [
-      {
-          "accessory": "mqttAircon",
-          "name": "mqttAircon",
-          "url": "mqtt://127.0.0.1",
-          "caption": "mqttAircon",
-      }
+        {
+          "accessory":                 "mqttAircon",
+          "name":                      "mqttAircon",
+          "url":                       "mqtt://127.0.0.1",
+          "username":                  "xxxxxxx",
+          "password":                  "xxxxxxx",
+          "caption":                   "mqttAircon",
+          "payload_mode":              "ac_mode",
+          "payload_on":                "true",
+          "payload_off":               "false",
+          "payload_temp":              "ac_temp",
+          "payload_ctemp":             "cur_temp",
+          "payload_chui":              "cur_humi",
+          "TargetTemperature":         27,
+          "TargetHeatingCoolingState": 0,
+          "topics": {
+                 "setOn":              "homekit/bedroom/aircon/set",
+                 "getOn":              "homekit/bedroom/aircon/get"
+          }
+        }
     ]
 }
