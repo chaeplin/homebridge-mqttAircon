@@ -94,8 +94,6 @@ function mqttAirconAccessory(log, config) {
   });
 
   this.client.on('message', function (topic, message) {
-    console.log(that.payloadisjson);
-
     if (topic == that.topics.getOn) {
         var status = JSON.parse(message);
         that.CurrentHeatingCoolingState = (status[that.payload_mode] == that.payload_on ? Characteristic.CurrentHeatingCoolingState.COOL : Characteristic.CurrentHeatingCoolingState.OFF);
@@ -103,10 +101,10 @@ function mqttAirconAccessory(log, config) {
         that.CurrentTemperature         = status[that.payload_ctemp];
         that.CurrentRelativeHumidity    = status[that.payload_chui];
 
-        that.service.getCharacteristic(CurrentHeatingCoolingState).setValue(that.CurrentHeatingCoolingState, undefined, 'fromSetValue');
-        that.service.getCharacteristic(TargetTemperature).setValue(that.TargetTemperature, undefined, 'fromSetValue');
-        that.service.getCharacteristic(CurrentTemperature).setValue(that.CurrentTemperature, undefined, 'fromSetValue');
-        that.service.getCharacteristic(CurrentRelativeHumidity).setValue(hat.CurrentRelativeHumidity, undefined, 'fromSetValue');
+        that.service.getCharacteristic(Characteristic.CurrentHeatingCoolingState).setValue(that.CurrentHeatingCoolingState, undefined, 'fromSetValue');
+        that.service.getCharacteristic(Characteristic.TargetTemperature).setValue(that.TargetTemperature, undefined, 'fromSetValue');
+        that.service.getCharacteristic(Characteristic.CurrentTemperature).setValue(that.CurrentTemperature, undefined, 'fromSetValue');
+        that.service.getCharacteristic(Characteristic.CurrentRelativeHumidity).setValue(that.CurrentRelativeHumidity, undefined, 'fromSetValue');
     }
   });
   this.client.subscribe(this.topics.getOn);
