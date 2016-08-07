@@ -124,9 +124,9 @@ mqttAirconAccessory.prototype.setTargetHeatingCoolingState = function(TargetHeat
     if(context !== 'fromSetValue') {
       this.TargetHeatingCoolingState = TargetHeatingCoolingState;
       if (this.TargetHeatingCoolingState == Characteristic.CurrentHeatingCoolingState.COOL) {
-        this.client.publish(this.topics.setOn,  '{' + this.payload_mode + ':' + this.payload_on + ',' + this.payload_temp + ':' + this.TargetTemperature + '}', this.options_publish);
+        this.client.publish(this.topics.setOn,  '{"' + this.payload_mode + '":' + this.payload_on + ',"' + this.payload_temp + '":' + this.TargetTemperature + '}', this.options_publish);
       } else if (this.TargetHeatingCoolingState == Characteristic.CurrentHeatingCoolingState.OFF) {
-        this.client.publish(this.topics.setOn,  '{' + this.payload_mode + ':' + this.payload_off + ',' + this.payload_temp + ':' + this.TargetTemperature + '}', this.options_publish);
+        this.client.publish(this.topics.setOn,  '{"' + this.payload_mode + '":' + this.payload_off + ',"' + this.payload_temp + '":' + this.TargetTemperature + '}', this.options_publish);
       }
     }
     callback();
@@ -140,9 +140,9 @@ mqttAirconAccessory.prototype.setTargetTemperature = function(TargetTemperature,
     if(context !== 'fromSetValue') {
       this.TargetTemperature = TargetTemperature;
       if (this.TargetHeatingCoolingState == Characteristic.CurrentHeatingCoolingState.COOL) {
-        this.client.publish(this.topics.setOn,  '{' + this.payload_mode + ':' + this.payload_on + ',' + this.payload_temp + ':' + this.TargetTemperature + '}', this.options_publish);
+        this.client.publish(this.topics.setOn,  '{"' + this.payload_mode + '":' + this.payload_on + ',"' + this.payload_temp + '":' + this.TargetTemperature + '}', this.options_publish);
       } else if (this.TargetHeatingCoolingState == Characteristic.CurrentHeatingCoolingState.OFF) {
-        this.client.publish(this.topics.setOn,  '{' + this.payload_mode + ':' + this.payload_off + ',' + this.payload_temp + ':' + this.TargetTemperature + '}', this.options_publish);
+        this.client.publish(this.topics.setOn,  '{"' + this.payload_mode + '":' + this.payload_off + ',"' + this.payload_temp + '":' + this.TargetTemperature + '}', this.options_publish);
       }
     }
     callback();
