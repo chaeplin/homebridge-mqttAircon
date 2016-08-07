@@ -36,6 +36,7 @@ function mqttAirconAccessory(log, config) {
   this.payload_temp               = config["payload_temp"];
   this.payload_ctemp              = config["payload_ctemp"];
   this.payload_chui               = config["payload_chui"];
+  this.payload_presence           = config["payload_presence"];
 
   this.TargetTemperature          = config["TargetTemperature"];
   this.TargetHeatingCoolingState  = config["TargetHeatingCoolingState"];
@@ -43,12 +44,17 @@ function mqttAirconAccessory(log, config) {
   this.CurrentTemperature         = 26;
   this.CurrentRelativeHumidity    = 0;
   this.TemperatureDisplayUnits    = 0;
+  this.OccupancyDetected          = 0;
   this.options_publish = {
     qos: 0,
     retain: true
   };
 
   this.service = new Service.Thermostat(this.name);
+
+  this.service.addCharacteristic(Characteristic.OccupancyDetected);
+  this.service.getCharacteristic(Characteristic.OccupancyDetected)
+    .on('get', this.getOccupancyDetected.bind(this));
 
   this.service.getCharacteristic(Characteristic.TargetTemperature)
     .setProps({
@@ -100,11 +106,13 @@ function mqttAirconAccessory(log, config) {
         that.TargetTemperature          = status[that.payload_temp];
         that.CurrentTemperature         = status[that.payload_ctemp];
         that.CurrentRelativeHumidity    = status[that.payload_chui];
+        that.OccupancyDetected          = status[that.payload_presence];
 
         that.service.getCharacteristic(Characteristic.CurrentHeatingCoolingState).setValue(that.CurrentHeatingCoolingState, undefined, 'fromSetValue');
         that.service.getCharacteristic(Characteristic.TargetTemperature).setValue(that.TargetTemperature, undefined, 'fromSetValue');
         that.service.getCharacteristic(Characteristic.CurrentTemperature).setValue(that.CurrentTemperature, undefined, 'fromSetValue');
         that.service.getCharacteristic(Characteristic.CurrentRelativeHumidity).setValue(that.CurrentRelativeHumidity, undefined, 'fromSetValue');
+        that.service.getCharacteristic(Characteristic.OccupancyDetected).setValue(that.OccupancyDetected, undefined, 'fromSetValue');
     }
   });
   this.client.subscribe(this.topics.getOn);
@@ -146,6 +154,10 @@ mqttAirconAccessory.prototype.setTargetTemperature = function(TargetTemperature,
       }
     }
     callback();
+}
+
+mqttAirconAccessory.prototype.getOccupancyDetected = function(callback) {
+    callback(null, this.OccupancyDetected);
 }
 
 mqttAirconAccessory.prototype.getCurrentTemperature = function(callback) {
