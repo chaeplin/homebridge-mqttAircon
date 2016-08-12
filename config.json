@@ -25,6 +25,7 @@
           "payload_ctemp":             "cur_temp",
           "payload_chui":              "cur_humi",
           "payload_presence":          "presence",
+          "payload_acflow":            "ac_flow",
           "TargetTemperature":         27,
           "TargetHeatingCoolingState": 0,
           "topics": {

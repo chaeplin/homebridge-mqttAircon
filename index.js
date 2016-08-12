@@ -1,8 +1,9 @@
-// MQTT Switch Accessory plugin for HomeBridge
+// MQTT Aircon Accessory plugin for HomeBridge
 
 'use strict';
 
-var Service, Characteristic;
+var inherits = require('util').inherits;
+var Service, Characteristic, FanSpeedCharacteristic;
 var mqtt = require("mqtt");
 
 function mqttAirconAccessory(log, config) {
@@ -37,6 +38,7 @@ function mqttAirconAccessory(log, config) {
   this.payload_ctemp              = config["payload_ctemp"];
   this.payload_chui               = config["payload_chui"];
   this.payload_presence           = config["payload_presence"];
+  this.payload_acflow             = config["payload_acflow"];
 
   this.TargetTemperature          = config["TargetTemperature"];
   this.TargetHeatingCoolingState  = config["TargetHeatingCoolingState"];
@@ -45,6 +47,7 @@ function mqttAirconAccessory(log, config) {
   this.CurrentRelativeHumidity    = 0;
   this.TemperatureDisplayUnits    = 0;
   this.OccupancyDetected          = 0;
+  this.FanSpeed                   = 1;
   this.options_publish = {
     qos: 0,
     retain: true
@@ -55,6 +58,11 @@ function mqttAirconAccessory(log, config) {
   this.service.addCharacteristic(Characteristic.OccupancyDetected);
   this.service.getCharacteristic(Characteristic.OccupancyDetected)
     .on('get', this.getOccupancyDetected.bind(this));
+
+  this.service.addCharacteristic(FanSpeedCharacteristic);
+  this.service.getCharacteristic(FanSpeedCharacteristic)
+    .on('get', this.getFanSpeed.bind(this))
+    .on('set', this.setFanSpeed.bind(this));
 
   this.service.getCharacteristic(Characteristic.TargetTemperature)
     .setProps({
@@ -107,12 +115,14 @@ function mqttAirconAccessory(log, config) {
         that.CurrentTemperature         = status[that.payload_ctemp];
         that.CurrentRelativeHumidity    = status[that.payload_chui];
         that.OccupancyDetected          = status[that.payload_presence];
+        that.FanSpeed                   = status[that.payload_acflow];
 
         that.service.getCharacteristic(Characteristic.CurrentHeatingCoolingState).setValue(that.CurrentHeatingCoolingState, undefined, 'fromSetValue');
         that.service.getCharacteristic(Characteristic.TargetTemperature).setValue(that.TargetTemperature, undefined, 'fromSetValue');
         that.service.getCharacteristic(Characteristic.CurrentTemperature).setValue(that.CurrentTemperature, undefined, 'fromSetValue');
         that.service.getCharacteristic(Characteristic.CurrentRelativeHumidity).setValue(that.CurrentRelativeHumidity, undefined, 'fromSetValue');
         that.service.getCharacteristic(Characteristic.OccupancyDetected).setValue(that.OccupancyDetected, undefined, 'fromSetValue');
+        that.service.getCharacteristic(FanSpeedCharacteristic).setValue(that.FanSpeed, undefined, 'fromSetValue');
     }
   });
   this.client.subscribe(this.topics.getOn);
@@ -121,6 +131,7 @@ function mqttAirconAccessory(log, config) {
 module.exports = function(homebridge) {
       Service = homebridge.hap.Service;
       Characteristic = homebridge.hap.Characteristic;
+      makeFanSpeedCharacteristic();
       homebridge.registerAccessory("homebridge-mqttAircon", "mqttAircon", mqttAirconAccessory);
 }
 
@@ -132,9 +143,9 @@ mqttAirconAccessory.prototype.setTargetHeatingCoolingState = function(TargetHeat
     if(context !== 'fromSetValue') {
       this.TargetHeatingCoolingState = TargetHeatingCoolingState;
       if (this.TargetHeatingCoolingState == Characteristic.CurrentHeatingCoolingState.COOL) {
-        this.client.publish(this.topics.setOn,  '{"' + this.payload_mode + '":' + this.payload_on + ',"' + this.payload_temp + '":' + this.TargetTemperature + '}', this.options_publish);
+        this.client.publish(this.topics.setOn,  '{"' + this.payload_mode + '":' + this.payload_on + ',"' + this.payload_temp + '":' + this.TargetTemperature + ',"' + this.payload_acflow + '":' + this.FanSpeed + '}', this.options_publish);
       } else if (this.TargetHeatingCoolingState == Characteristic.CurrentHeatingCoolingState.OFF) {
-        this.client.publish(this.topics.setOn,  '{"' + this.payload_mode + '":' + this.payload_off + ',"' + this.payload_temp + '":' + this.TargetTemperature + '}', this.options_publish);
+        this.client.publish(this.topics.setOn,  '{"' + this.payload_mode + '":' + this.payload_off + ',"' + this.payload_temp + '":' + this.TargetTemperature + ',"' + this.payload_acflow + '":' + this.FanSpeed + '}', this.options_publish);
       }
     }
     callback();
@@ -148,9 +159,25 @@ mqttAirconAccessory.prototype.setTargetTemperature = function(TargetTemperature,
     if(context !== 'fromSetValue') {
       this.TargetTemperature = TargetTemperature;
       if (this.TargetHeatingCoolingState == Characteristic.CurrentHeatingCoolingState.COOL) {
-        this.client.publish(this.topics.setOn,  '{"' + this.payload_mode + '":' + this.payload_on + ',"' + this.payload_temp + '":' + this.TargetTemperature + '}', this.options_publish);
+        this.client.publish(this.topics.setOn,  '{"' + this.payload_mode + '":' + this.payload_on + ',"' + this.payload_temp + '":' + this.TargetTemperature + ',"' + this.payload_acflow + '":' + this.FanSpeed + '}', this.options_publish);
       } else if (this.TargetHeatingCoolingState == Characteristic.CurrentHeatingCoolingState.OFF) {
-        this.client.publish(this.topics.setOn,  '{"' + this.payload_mode + '":' + this.payload_off + ',"' + this.payload_temp + '":' + this.TargetTemperature + '}', this.options_publish);
+        this.client.publish(this.topics.setOn,  '{"' + this.payload_mode + '":' + this.payload_off + ',"' + this.payload_temp + '":' + this.TargetTemperature + ',"' + this.payload_acflow + '":' + this.FanSpeed + '}', this.options_publish);
+      }
+    }
+    callback();
+}
+
+mqttAirconAccessory.prototype.getFanSpeed = function(callback) {
+    callback(null, this.FanSpeed);
+}
+
+mqttAirconAccessory.prototype.setFanSpeed = function(FanSpeed, callback, context) {
+    if(context !== 'fromSetValue') {
+      this.FanSpeed = FanSpeed;
+      if (this.TargetHeatingCoolingState == Characteristic.CurrentHeatingCoolingState.COOL) {
+        this.client.publish(this.topics.setOn,  '{"' + this.payload_mode + '":' + this.payload_on + ',"' + this.payload_temp + '":' + this.TargetTemperature + ',"' + this.payload_acflow + '":' + this.FanSpeed + '}', this.options_publish);
+      } else if (this.TargetHeatingCoolingState == Characteristic.CurrentHeatingCoolingState.OFF) {
+        this.client.publish(this.topics.setOn,  '{"' + this.payload_mode + '":' + this.payload_off + ',"' + this.payload_temp + '":' + this.TargetTemperature + ',"' + this.payload_acflow + '":' + this.FanSpeed + '}', this.options_publish);
       }
     }
     callback();
@@ -178,4 +205,24 @@ mqttAirconAccessory.prototype.getCurrentHeatingCoolingState = function(callback)
 
 mqttAirconAccessory.prototype.getServices = function() {
   return [this.service];
+}
+
+function makeFanSpeedCharacteristic() {
+
+    FanSpeedCharacteristic = function() {
+        Characteristic.call(this, 'FanSpeed', '00011033-0000-0000-8000-0026BB765291');
+        this.setProps({
+          format: Characteristic.Formats.UINT8, 
+          maxValue: 2,
+          minValue: 0,
+          minStep: 1,
+          perms: [Characteristic.Perms.READ, Characteristic.Perms.WRITE, Characteristic.Perms.NOTIFY]
+        });
+        this.value = this.getDefaultValue();
+    };
+
+    inherits(FanSpeedCharacteristic, Characteristic);
+    FanSpeedCharacteristic.LOW  = 0;
+    FanSpeedCharacteristic.MID  = 1;
+    FanSpeedCharacteristic.HIGH = 2;
 }
